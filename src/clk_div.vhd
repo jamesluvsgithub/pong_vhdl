@@ -3,8 +3,8 @@ use ieee.std_logic_1164.all;
 
 entity clk_div is
     generic (
-        INPUT_MHZ : integer := 50;
-        OUTPUT_MHZ : integer := 25
+        INPUT_HZ : integer := 50_000_000;
+        OUTPUT_HZ : integer := 25_000_000
     );
     port (
         rst : in std_logic;
@@ -14,7 +14,7 @@ entity clk_div is
 end entity clk_div;
 
 architecture rtl of clk_div is
-    constant TOGGLE_COUNT : integer := INPUT_MHZ / (2 * OUTPUT_MHZ);
+    constant TOGGLE_COUNT : integer := INPUT_HZ / (2 * OUTPUT_HZ);
     signal counter : integer := 0;
     signal output_clk_reg : std_logic := '0';
 begin

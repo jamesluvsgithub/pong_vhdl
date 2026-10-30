@@ -7,8 +7,8 @@ use std.env.all;
 entity clk_div_tb is
     generic (
         NUM_OUT_POSEDGES : integer := 200; -- 100 full cycles
-        INPUT_MHZ       : integer := 50;
-        OUTPUT_MHZ      : integer := 25
+        INPUT_HZ       : integer := 50_000_000;
+        OUTPUT_HZ      : integer := 25_000_000
     );
 end entity clk_div_tb;
 
@@ -20,8 +20,8 @@ begin
 
     DUT : entity work.clk_div
         generic map (
-            INPUT_MHZ  => INPUT_MHZ,
-            OUTPUT_MHZ => OUTPUT_MHZ
+            INPUT_HZ  => INPUT_HZ,
+            OUTPUT_HZ => OUTPUT_HZ
         )
         port map (
             rst        => rst,
