@@ -7,10 +7,11 @@ use work.sprite_addr_lib.all;
 
 entity pong is
     generic (
-        INPUT_CLK_MHZ  : integer := 50;
-        PIXEL_CLK_MHZ : integer := 25
+        INPUT_CLK_HZ  : integer := 50_000_000;
+        PIXEL_CLK_HZ : integer := 25_000_000
     );
     port (
+        -- DE10 LITE modules
         rst      : in  std_logic;
         clk      : in  std_logic;
         key0     : in  std_logic;
@@ -89,6 +90,10 @@ architecture rtl of pong is
     signal start_button_draw   : std_logic;
     signal restart_button_draw : std_logic;
 
+    -- SCORE RENDERING
+    signal p1_score_addr, p2_score_addr : std_logic_vector(13 downto 0);
+    signal p1_score_draw, p2_score_draw : std_logic;
+
 
 begin
 
@@ -104,8 +109,8 @@ begin
     -- PIXEL CLOCK
     pixel_clk_gen : entity work.clk_div
         generic map (
-            INPUT_MHZ  => INPUT_CLK_MHZ,
-            OUTPUT_MHZ => PIXEL_CLK_MHZ
+            INPUT_HZ  => INPUT_CLK_HZ,
+            OUTPUT_HZ => PIXEL_CLK_HZ
         )
         port map (
             rst => reset, 
@@ -135,6 +140,37 @@ begin
 
     vga_hs <= hsync_reg;
     vga_vs <= vsync_reg;
+
+
+    -- SCORE RENDERERS
+
+    p1_score_renderer : entity work.score_renderer
+        generic map (
+            X_POS => 240,
+            Y_POS => 30
+        )
+        port map (
+            hcount => hcount,
+            vcount => vcount,
+            score => p1_score,
+            enable => playing_screen,
+            rom_addr => p1_score_addr,
+            draw_score => p1_score_draw
+        );
+
+    p2_score_renderer : entity work.score_renderer
+        generic map (
+            X_POS => 380,
+            Y_POS => 30
+        )
+        port map (
+            hcount => hcount,
+            vcount => vcount,
+            score => p2_score,
+            enable => playing_screen,
+            rom_addr => p2_score_addr,
+            draw_score => p2_score_draw
+        );
 
 
 
@@ -172,6 +208,7 @@ begin
         else '0';
 
     playing_screen <= '1' when gamestate = PLAYING else '0';
+
 
 
     -- TEXT RENDERERS
@@ -296,24 +333,30 @@ begin
             draw_text => restart_button_draw
         );
 
-    rom_addr <= pong_addr when pong_draw = '1' else
-                start_press_addr when start_press_draw = '1' else
-                start_button_addr when start_button_draw = '1' else
-                game_over_addr when game_over_draw = '1' else
-                p1_win_addr when p1_win_draw = '1' else
-                p2_win_addr when p2_win_draw = '1' else
-                restart_addr when restart_draw = '1' else
-                restart_button_addr when restart_button_draw = '1' else
-                (others => '0');
+    rom_addr <=
+            pong_addr when pong_draw = '1' else
+            start_press_addr when start_press_draw = '1' else
+            start_button_addr when start_button_draw = '1' else
+            game_over_addr when game_over_draw = '1' else
+            p1_win_addr when p1_win_draw = '1' else
+            p2_win_addr when p2_win_draw = '1' else
+            restart_addr when restart_draw = '1' else
+            restart_button_addr when restart_button_draw = '1' else
+            p1_score_addr when p1_score_draw = '1' else
+            p2_score_addr when p2_score_draw = '1' else
+            (others => '0');
 
-    draw_sprite <= pong_draw or
-                start_press_draw or
-                start_button_draw or
-                game_over_draw or
-                p1_win_draw or
-                p2_win_draw or
-                restart_draw or
-                restart_button_draw;
+    draw_sprite <=
+            pong_draw or
+            start_press_draw or
+            start_button_draw or
+            game_over_draw or
+            p1_win_draw or
+            p2_win_draw or
+            restart_draw or
+            restart_button_draw or
+            p1_score_draw or
+            p2_score_draw;
 
 
     -- GAME TICK
@@ -379,7 +422,8 @@ begin
                 gamestate <= next_gamestate;
 
                 if gamestate = START then
-                    p1_score <= 0; p2_score <= 0;
+                    p1_score <= 0; 
+                    p2_score <= 0;
                     p1_y <= to_unsigned(CENTER_Y, 10);
                     p2_y <= to_unsigned(CENTER_Y, 10);
                     ball_x <= to_unsigned(CENTER_X, 10);
@@ -397,29 +441,29 @@ begin
                     end if;
 
                     if to_integer(ball_x) + BALL_WIDTH >= PADDLE_R_ADDR and
-                       to_integer(ball_y) + BALL_WIDTH >= to_integer(p2_y) and
+                       to_integer(ball_y) + BALL_HEIGHT >= to_integer(p2_y) and
                        to_integer(ball_y) <= to_integer(p2_y) + PADDLE_HEIGHT then
                         dx <= LEFT;
                     end if;
 
                     if to_integer(ball_x) <= PADDLE_L_ADDR then
-                        p2_score <= (p2_score + 1) mod 16;
+                        p2_score <= p2_score + 1;
                         ball_x <= to_unsigned(320, 10);
                         ball_y <= to_unsigned(240, 10);
                         dx <= RIGHT;
 
-                        if p2_score = 10 then 
+                        if p2_score = 9 then 
                             p2iswinner <= '1'; 
                         end if;
                     end if;
 
                     if to_integer(ball_x) >= PADDLE_R_ADDR + PADDLE_WIDTH then
-                        p1_score <= (p1_score + 1) mod 16;
+                        p1_score <= p1_score + 1;
                         ball_x <= to_unsigned(320, 10);
                         ball_y <= to_unsigned(240, 10);
                         dx <= LEFT;
 
-                        if p1_score = 10 then 
+                        if p1_score = 9 then 
                             p2iswinner <= '0'; 
                         end if;
                     end if;
